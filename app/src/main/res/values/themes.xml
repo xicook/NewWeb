@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
+    <!-- Tema principal do app -->
     <style name="Theme.NewWeb"
-        parent="Theme.Material3.DynamicColors.DayNight.NoActionBar"/>
-        <item name="colorPrimary">#6750A4</item>
-        <item name="colorSecondary">#625B71</item>
+        parent="Theme.Material3.DynamicColors.DayNight.NoActionBar">
+        <!-- Sem ActionBar -->
     </style>
+
 </resources>
