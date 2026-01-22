@@ -20,19 +20,23 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
-import java.util.Locale;
 
 public class MainActivity extends Activity {
 
     private FrameLayout webContainer;
+    private LinearLayout tabsOverlay;
     private EditText urlBar;
 
     private final ArrayList<WebView> tabs = new ArrayList<>();
     private int currentTab = 0;
+
+    private View customView;
+    private WebChromeClient.CustomViewCallback customViewCallback;
 
     private static final String HOME_URL = "https://www.google.com";
 
@@ -46,6 +50,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         webContainer = findViewById(R.id.webContainer);
+        tabsOverlay = findViewById(R.id.tabsOverlay);
         urlBar = findViewById(R.id.urlBar);
 
         hideSystemUI();
@@ -54,6 +59,7 @@ public class MainActivity extends Activity {
         urlBar.setOnKeyListener((v, keyCode, event) -> {
             if (keyCode == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN) {
                 loadFromBar(urlBar.getText().toString());
+                hideKeyboardAndFocus();
                 return true;
             }
             return false;
@@ -79,7 +85,7 @@ public class MainActivity extends Activity {
     }
 
     /* =========================
-       WEBVIEW SETUP
+       WEBVIEW
        ========================= */
 
     private void setupWebView(WebView webView) {
@@ -89,7 +95,6 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setUseWideViewPort(true);
         s.setLoadWithOverviewMode(true);
-        s.setSupportMultipleWindows(true);
 
         s.setUserAgentString(buildUserAgent());
 
@@ -114,33 +119,63 @@ public class MainActivity extends Activity {
 
             @Override
             public void onShowCustomView(View view, CustomViewCallback callback) {
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                customView = view;
+                customViewCallback = callback;
+
                 webContainer.removeAllViews();
                 webContainer.addView(view);
+
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                hideSystemUI();
+                urlBar.setVisibility(View.GONE);
             }
 
             @Override
             public void onHideCustomView() {
+                if (customView != null) {
+                    webContainer.removeView(customView);
+                    customView = null;
+                }
+
+                if (customViewCallback != null) {
+                    customViewCallback.onCustomViewHidden();
+                }
+
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                urlBar.setVisibility(View.VISIBLE);
                 switchToTab(currentTab);
+                hideSystemUI();
             }
         });
     }
 
     /* =========================
-       URL BAR LOGIC
+       URL BAR
        ========================= */
 
     private void loadFromBar(String input) {
-        if (!input.startsWith("http")) {
-            String q = Uri.encode(input);
-            input = "https://www.google.com/search?q=" + q;
+        input = input.trim();
+
+        if (input.contains(" ")) {
+            tabs.get(currentTab).loadUrl(
+                    "https://www.google.com/search?q=" + Uri.encode(input)
+            );
+            return;
         }
+
+        if (!input.startsWith("http://") && !input.startsWith("https://")) {
+            input = "https://" + input;
+        }
+
         tabs.get(currentTab).loadUrl(input);
     }
 
+    private void hideKeyboardAndFocus() {
+        urlBar.clearFocus();
+    }
+
     /* =========================
-       ADULT CONTENT BLOCK
+       ADULT BLOCK
        ========================= */
 
     private boolean isAdultUrl(String url) {
@@ -183,12 +218,12 @@ public class MainActivity extends Activity {
         return "Mozilla/5.0 (Android " + androidVer + "; Mobile; " + device + ") " +
                 "AppleWebKit/537.36 (KHTML, like Gecko) " +
                 "Chrome/" + webViewVer +
-                " on NewWeb/1.4 based on WebView " + webViewVer +
+                " on NewWeb/1.3 based on WebView " + webViewVer +
                 " Safari/537.36";
     }
 
     /* =========================
-       FULLSCREEN + PIP
+       FULLSCREEN
        ========================= */
 
     private void hideSystemUI() {
@@ -209,9 +244,13 @@ public class MainActivity extends Activity {
         }
     }
 
+    /* =========================
+       PIP
+       ========================= */
+
     @Override
     public void onUserLeaveHint() {
-        if (Build.VERSION.SDK_INT >= 26) {
+        if (Build.VERSION.SDK_INT >= 26 && customView == null) {
             PictureInPictureParams params =
                     new PictureInPictureParams.Builder()
                             .setAspectRatio(new Rational(16, 9))
