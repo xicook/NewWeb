@@ -1,5 +1,6 @@
 package com.good.difference.x1co.newweb;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -21,7 +22,7 @@ import java.util.ArrayList;
 public class MainActivity extends AppCompatActivity {
 
     private static final String HOME_URL = "https://www.google.com";
-    private static final String APP_VERSION = "1.2";
+    private static final String APP_VERSION = "1.3";
 
     private EditText urlBar;
     private FrameLayout webContainer;
@@ -55,24 +56,35 @@ public class MainActivity extends AppCompatActivity {
     private void addNewTab(String url) {
         WebView w = new WebView(this);
 
-        // 🔥 USER-AGENT NOVO 🔥
-        String androidVersion = android.os.Build.VERSION.RELEASE;
+        /* ========= USER-AGENT FINAL ========= */
 
-        String webViewVersion = "unknown";
-        if (android.os.Build.VERSION.SDK_INT >= 26) {
+        String androidVersion = Build.VERSION.RELEASE;
+        String device = Build.MODEL;
+
+        // versão MAJOR do WebView / Chrome
+        String webViewMajor = "unknown";
+        if (Build.VERSION.SDK_INT >= 26) {
             try {
-                webViewVersion = WebView
+                String full = WebView
                         .getCurrentWebViewPackage()
-                        .versionName;
+                        .versionName; // ex: "145.0.6422.76"
+                webViewMajor = full.split("\\.")[0]; // "145"
             } catch (Exception ignored) {}
         }
 
         String userAgent =
-                "NewWeb " + APP_VERSION +
-                        " on Android " + androidVersion +
-                        " based on WebView " + webViewVersion;
+                "Mozilla/5.0 (Android " + androidVersion +
+                        "; Mobile; " + device + ") " +
+                        "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                        "Chrome/" + webViewMajor + " " +
+                        "on NewWeb/" + APP_VERSION + " " +
+                        "based on WebView " + webViewMajor + " " +
+                        "Safari/537.36";
 
         w.getSettings().setUserAgentString(userAgent);
+
+        /* =================================== */
+
         w.getSettings().setJavaScriptEnabled(true);
         w.getSettings().setDomStorageEnabled(true);
 
