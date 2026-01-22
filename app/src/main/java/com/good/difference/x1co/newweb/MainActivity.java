@@ -4,41 +4,41 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.app.PictureInPictureParams;
 import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Rational;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.ViewGroup;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.ImageButton;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity {
-
-    private static final String HOME_URL = "https://www.google.com";
+public class MainActivity extends Activity {
 
     private FrameLayout webContainer;
     private EditText urlBar;
-    private ImageButton tabsButton;
 
     private final ArrayList<WebView> tabs = new ArrayList<>();
-    private int currentTab = -1;
+    private int currentTab = 0;
 
-    private View customView;
-    private WebChromeClient.CustomViewCallback customViewCallback;
+    private static final String HOME_URL = "https://www.google.com";
+
+    private static final String[] ADULT_KEYWORDS = {
+            "porn", "sex", "xxx", "hentai", "nsfw", "adult"
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,129 +47,170 @@ public class MainActivity extends AppCompatActivity {
 
         webContainer = findViewById(R.id.webContainer);
         urlBar = findViewById(R.id.urlBar);
-        tabsButton = findViewById(R.id.tabsButton);
 
-        setupUrlBar();
-        tabsButton.setOnClickListener(v -> showTabsScreen());
+        hideSystemUI();
+        createNewTab(HOME_URL);
 
-        addNewTab(HOME_URL);
-    }
-
-    // =========================
-    // URL BAR
-    // =========================
-    private void setupUrlBar() {
         urlBar.setOnKeyListener((v, keyCode, event) -> {
             if (keyCode == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN) {
-                String text = urlBar.getText().toString().trim();
-                loadInput(text);
+                loadFromBar(urlBar.getText().toString());
                 return true;
             }
             return false;
         });
     }
 
-    private void loadInput(String input) {
-        if (!input.contains("://") && !input.contains(".")) {
-            input = "https://www.google.com/search?q=" + input.replace(" ", "+");
-        } else if (!input.startsWith("http://") && !input.startsWith("https://")) {
-            input = "https://" + input;
-        }
-        tabs.get(currentTab).loadUrl(input);
-    }
+    /* =========================
+       TABS
+       ========================= */
 
-    // =========================
-    // TABS
-    // =========================
-    private void addNewTab(String url) {
-        WebView webView = createWebView();
+    private void createNewTab(String url) {
+        WebView webView = new WebView(this);
+        setupWebView(webView);
         tabs.add(webView);
         switchToTab(tabs.size() - 1);
         webView.loadUrl(url);
     }
 
-    private void closeTab(int index) {
-        if (tabs.size() <= 1) return;
-
-        WebView webView = tabs.remove(index);
-        webContainer.removeView(webView);
-        webView.destroy();
-
-        if (currentTab >= tabs.size()) {
-            currentTab = tabs.size() - 1;
-        }
-        switchToTab(currentTab);
-    }
-
     private void switchToTab(int index) {
         webContainer.removeAllViews();
-        webContainer.addView(tabs.get(index),
-                new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                ));
         currentTab = index;
+        webContainer.addView(tabs.get(index));
     }
 
-    // =========================
-    // WEBVIEW
-    // =========================
-    private WebView createWebView() {
-        WebView webView = new WebView(this);
+    /* =========================
+       WEBVIEW SETUP
+       ========================= */
 
+    private void setupWebView(WebView webView) {
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setUseWideViewPort(true);
         s.setLoadWithOverviewMode(true);
+        s.setSupportMultipleWindows(true);
+
+        s.setUserAgentString(buildUserAgent());
 
         webView.setWebViewClient(new WebViewClient() {
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (isAdultUrl(url)) {
+                    showAdultWarning(url);
+                    return true;
+                }
+                return false;
+            }
+
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 urlBar.setText(url);
             }
         });
 
-        webView.setWebChromeClient(chromeClient);
-        return webView;
+        webView.setWebChromeClient(new WebChromeClient() {
+
+            @Override
+            public void onShowCustomView(View view, CustomViewCallback callback) {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                webContainer.removeAllViews();
+                webContainer.addView(view);
+            }
+
+            @Override
+            public void onHideCustomView() {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                switchToTab(currentTab);
+            }
+        });
     }
 
-    // =========================
-    // FULLSCREEN + PiP
-    // =========================
-    private final WebChromeClient chromeClient = new WebChromeClient() {
+    /* =========================
+       URL BAR LOGIC
+       ========================= */
 
-        @Override
-        public void onShowCustomView(View view, CustomViewCallback callback) {
-            customView = view;
-            customViewCallback = callback;
+    private void loadFromBar(String input) {
+        if (!input.startsWith("http")) {
+            String q = Uri.encode(input);
+            input = "https://www.google.com/search?q=" + q;
+        }
+        tabs.get(currentTab).loadUrl(input);
+    }
 
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+    /* =========================
+       ADULT CONTENT BLOCK
+       ========================= */
 
+    private boolean isAdultUrl(String url) {
+        if (url == null) return false;
+        String l = url.toLowerCase();
+        for (String k : ADULT_KEYWORDS) {
+            if (l.contains(k)) return true;
+        }
+        return false;
+    }
+
+    private void showAdultWarning(String blockedUrl) {
+        Dialog d = new Dialog(this, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
+        d.setContentView(R.layout.dialog_adult_warning);
+
+        d.findViewById(R.id.continueBtn).setOnClickListener(v -> {
+            d.dismiss();
+            tabs.get(currentTab).loadUrl(blockedUrl);
+        });
+
+        d.findViewById(R.id.backBtn).setOnClickListener(v -> {
+            d.dismiss();
+            tabs.get(currentTab).loadUrl(HOME_URL);
+        });
+
+        d.show();
+    }
+
+    /* =========================
+       USER AGENT
+       ========================= */
+
+    private String buildUserAgent() {
+        String androidVer = Build.VERSION.RELEASE;
+        String device = Build.MODEL;
+        String webViewVer = WebView.getCurrentWebViewPackage() != null
+                ? WebView.getCurrentWebViewPackage().versionName.split("\\.")[0]
+                : "0";
+
+        return "Mozilla/5.0 (Android " + androidVer + "; Mobile; " + device + ") " +
+                "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                "Chrome/" + webViewVer +
+                " on NewWeb/1.4 based on WebView " + webViewVer +
+                " Safari/537.36";
+    }
+
+    /* =========================
+       FULLSCREEN + PIP
+       ========================= */
+
+    private void hideSystemUI() {
+        if (Build.VERSION.SDK_INT >= 30) {
+            WindowInsetsController c = getWindow().getInsetsController();
+            if (c != null) {
+                c.hide(WindowInsets.Type.systemBars());
+                c.setSystemBarsBehavior(
+                        WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                );
+            }
+        } else {
             getWindow().getDecorView().setSystemUiVisibility(
                     View.SYSTEM_UI_FLAG_FULLSCREEN
                             | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
             );
         }
-
-        @Override
-        public void onHideCustomView() {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-
-            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
-
-            if (customViewCallback != null) {
-                customViewCallback.onCustomViewHidden();
-            }
-
-            customView = null;
-            customViewCallback = null;
-        }
-    };
+    }
 
     @Override
-    protected void onUserLeaveHint() {
+    public void onUserLeaveHint() {
         if (Build.VERSION.SDK_INT >= 26) {
             PictureInPictureParams params =
                     new PictureInPictureParams.Builder()
@@ -179,66 +220,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // =========================
-    // TABS SCREEN
-    // =========================
-    private void showTabsScreen() {
-        Dialog dialog = new Dialog(this, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
-        dialog.setContentView(R.layout.dialog_tabs);
-
-        LinearLayout list = dialog.findViewById(R.id.tabsList);
-        TextView newTab = dialog.findViewById(R.id.newTabBtn);
-
-        newTab.setOnClickListener(v -> {
-            addNewTab(HOME_URL);
-            dialog.dismiss();
-        });
-
-        for (int i = 0; i < tabs.size(); i++) {
-            int index = i;
-
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setPadding(16, 16, 16, 16);
-
-            TextView title = new TextView(this);
-            title.setText("Aba " + (i + 1));
-            title.setLayoutParams(new LinearLayout.LayoutParams(0,
-                    ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-            TextView close = new TextView(this);
-            close.setText("✕");
-            close.setTextSize(18);
-
-            title.setOnClickListener(v -> {
-                switchToTab(index);
-                dialog.dismiss();
-            });
-
-            close.setOnClickListener(v -> {
-                closeTab(index);
-                dialog.dismiss();
-                showTabsScreen();
-            });
-
-            row.addView(title);
-            row.addView(close);
-            list.addView(row);
-        }
-
-        dialog.show();
-    }
-
-    // =========================
-    // BACK
-    // =========================
     @Override
-    public void onBackPressed() {
-        WebView webView = tabs.get(currentTab);
-        if (webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
-        }
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
     }
 }
