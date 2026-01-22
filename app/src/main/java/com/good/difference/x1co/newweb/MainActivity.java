@@ -1,9 +1,11 @@
 package com.good.difference.x1co.newweb;
 
+import android.app.PictureInPictureParams;
+import android.content.pm.ActivityInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.view.LayoutInflater;
+import android.util.Rational;
 import android.view.View;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
@@ -31,6 +33,10 @@ public class MainActivity extends AppCompatActivity {
     private final ArrayList<WebView> tabs = new ArrayList<>();
     private int currentTab = -1;
 
+    // Fullscreen
+    private View customView;
+    private WebChromeClient.CustomViewCallback customViewCallback;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -47,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
         addNewTab(HOME_URL);
     }
 
-    /* ===================== URL / BUSCA ===================== */
+    /* ================= URL / BUSCA ================= */
 
     private void loadInput() {
         if (currentTab < 0) return;
@@ -67,19 +73,18 @@ public class MainActivity extends AppCompatActivity {
                     input.replace(" ", "+");
         }
 
-        if (!input.startsWith("http://") && !input.startsWith("https://")) {
+        if (!input.startsWith("http")) {
             input = "https://" + input;
         }
 
         return input;
     }
 
-    /* ===================== ABAS ===================== */
+    /* ================= ABAS ================= */
 
     private void addNewTab(String url) {
         WebView w = new WebView(this);
 
-        /* ===== USER-AGENT ===== */
         String androidVersion = Build.VERSION.RELEASE;
         String device = Build.MODEL;
 
@@ -102,8 +107,6 @@ public class MainActivity extends AppCompatActivity {
                         " Safari/537.36";
 
         w.getSettings().setUserAgentString(userAgent);
-        /* ===================== */
-
         w.getSettings().setJavaScriptEnabled(true);
         w.getSettings().setDomStorageEnabled(true);
 
@@ -150,17 +153,32 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < tabs.size(); i++) {
             int index = i;
 
-            TextView item = new TextView(this);
-            item.setPadding(32, 24, 32, 24);
-            item.setText(tabs.get(i).getTitle() != null
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(24, 24, 24, 24);
+
+            TextView title = new TextView(this);
+            title.setLayoutParams(new LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            title.setText(tabs.get(i).getTitle() != null
                     ? tabs.get(i).getTitle()
                     : "Aba " + (i + 1));
 
-            item.setOnClickListener(v -> {
+            title.setOnClickListener(v -> {
                 switchToTab(index);
             });
 
-            list.addView(item);
+            TextView close = new TextView(this);
+            close.setText("✕");
+            close.setTextSize(18);
+            close.setPadding(16, 0, 16, 0);
+            close.setOnClickListener(v -> {
+                closeTab(index);
+            });
+
+            row.addView(title);
+            row.addView(close);
+            list.addView(row);
         }
 
         new AlertDialog.Builder(this)
@@ -172,12 +190,11 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    /* ===================== WEB ===================== */
+    /* ================= WEB ================= */
 
     private final WebViewClient webClient = new WebViewClient() {
         @Override
         public boolean shouldOverrideUrlLoading(WebView v, String url) {
-
             if (isAdult(url)) {
                 new AlertDialog.Builder(MainActivity.this)
                         .setTitle("Conteúdo +18")
@@ -194,9 +211,41 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private final WebChromeClient chromeClient = new WebChromeClient() {
+
         @Override
-        public void onReceivedTitle(WebView v, String title) {
-            updateTabsButton();
+        public void onShowCustomView(View view, CustomViewCallback callback) {
+            if (customView != null) {
+                callback.onCustomViewHidden();
+                return;
+            }
+
+            customView = view;
+            customViewCallback = callback;
+
+            webContainer.removeAllViews();
+            webContainer.addView(view);
+
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            urlBar.setVisibility(View.GONE);
+            tabsBtn.setVisibility(View.GONE);
+        }
+
+        @Override
+        public void onHideCustomView() {
+            if (customView == null) return;
+
+            webContainer.removeView(customView);
+            customView = null;
+
+            webContainer.addView(tabs.get(currentTab));
+
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            urlBar.setVisibility(View.VISIBLE);
+            tabsBtn.setVisibility(View.VISIBLE);
+
+            if (customViewCallback != null) {
+                customViewCallback.onCustomViewHidden();
+            }
         }
     };
 
@@ -205,8 +254,26 @@ public class MainActivity extends AppCompatActivity {
         return u.contains("porn") || u.contains("xxx") || u.contains("sex");
     }
 
+    /* ================= PiP ================= */
+
+    @Override
+    protected void onUserLeaveHint() {
+        if (Build.VERSION.SDK_INT >= 26 && customView != null) {
+            PictureInPictureParams params =
+                    new PictureInPictureParams.Builder()
+                            .setAspectRatio(new Rational(16, 9))
+                            .build();
+            enterPictureInPictureMode(params);
+        }
+    }
+
     @Override
     public void onBackPressed() {
+        if (customView != null) {
+            chromeClient.onHideCustomView();
+            return;
+        }
+
         if (currentTab >= 0 && tabs.get(currentTab).canGoBack()) {
             tabs.get(currentTab).goBack();
         } else {
