@@ -21,7 +21,7 @@ import java.util.ArrayList;
 public class MainActivity extends AppCompatActivity {
 
     private static final String HOME_URL = "https://www.google.com";
-    private static final String APP_VERSION = "1.1";
+    private static final String APP_VERSION = "1.2";
 
     private EditText urlBar;
     private FrameLayout webContainer;
@@ -55,11 +55,22 @@ public class MainActivity extends AppCompatActivity {
     private void addNewTab(String url) {
         WebView w = new WebView(this);
 
-        // ✅ ANDROID VERSION REAL (ex: 13, 14, 15, 16)
+        // 🔥 USER-AGENT NOVO 🔥
         String androidVersion = android.os.Build.VERSION.RELEASE;
 
+        String webViewVersion = "unknown";
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            try {
+                webViewVersion = WebView
+                        .getCurrentWebViewPackage()
+                        .versionName;
+            } catch (Exception ignored) {}
+        }
+
         String userAgent =
-                "Mozilla/5.0 NewWeb " + APP_VERSION + " on Android " + androidVersion;
+                "NewWeb " + APP_VERSION +
+                        " on Android " + androidVersion +
+                        " based on WebView " + webViewVersion;
 
         w.getSettings().setUserAgentString(userAgent);
         w.getSettings().setJavaScriptEnabled(true);
