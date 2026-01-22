@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/root"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:fitsSystemWindows="true"
-    android:padding="8dp">
+    android:fitsSystemWindows="true">
 
     <!-- Barra superior -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:padding="8dp"
         android:gravity="center_vertical">
 
         <!-- Barra de URL -->
@@ -26,20 +26,24 @@
             android:inputType="textUri"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
-            android:background="@drawable/bg_urlbar" />
+            android:background="@drawable/url_bar_bg"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
 
-        <!-- Botão Abas (ícone) -->
+        <!-- Botão de abas -->
         <ImageButton
-            android:id="@+id/tabsBtn"
+            android:id="@+id/tabsButton"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_marginStart="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Abas"
             android:src="@android:drawable/ic_menu_agenda"
-            android:contentDescription="Abas" />
+            android:tint="?attr/colorOnSurface" />
+
     </LinearLayout>
 
-    <!-- WebView -->
+    <!-- Container do WebView -->
     <FrameLayout
         android:id="@+id/webContainer"
         android:layout_width="match_parent"
