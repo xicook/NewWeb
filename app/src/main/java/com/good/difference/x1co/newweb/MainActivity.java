@@ -1,18 +1,23 @@
 package com.good.difference.x1co.newweb;
 
+import android.app.Dialog;
 import android.app.PictureInPictureParams;
 import android.content.pm.ActivityInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Rational;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -27,13 +32,14 @@ public class MainActivity extends AppCompatActivity {
     private static final String APP_VERSION = "1.3";
 
     private EditText urlBar;
+    private ImageButton tabsBtn;
     private FrameLayout webContainer;
-    private Button tabsBtn;
+    private View root;
 
     private final ArrayList<WebView> tabs = new ArrayList<>();
     private int currentTab = -1;
 
-    // Fullscreen
+    // Fullscreen vídeo
     private View customView;
     private WebChromeClient.CustomViewCallback customViewCallback;
 
@@ -42,13 +48,23 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        root = findViewById(R.id.root);
         urlBar = findViewById(R.id.urlBar);
-        webContainer = findViewById(R.id.webContainer);
         tabsBtn = findViewById(R.id.tabsBtn);
-        Button go = findViewById(R.id.goBtn);
+        webContainer = findViewById(R.id.webContainer);
 
-        go.setOnClickListener(v -> loadInput());
-        tabsBtn.setOnClickListener(v -> showTabsDialog());
+        // Enter navega / pesquisa
+        urlBar.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_GO
+                    || actionId == EditorInfo.IME_ACTION_DONE
+                    || actionId == EditorInfo.IME_NULL) {
+                loadInput();
+                return true;
+            }
+            return false;
+        });
+
+        tabsBtn.setOnClickListener(v -> showTabsScreen());
 
         addNewTab(HOME_URL);
     }
@@ -61,8 +77,7 @@ public class MainActivity extends AppCompatActivity {
         String input = urlBar.getText().toString();
         if (TextUtils.isEmpty(input)) return;
 
-        String url = buildUrl(input);
-        tabs.get(currentTab).loadUrl(url);
+        tabs.get(currentTab).loadUrl(buildUrl(input));
     }
 
     private String buildUrl(String input) {
@@ -109,6 +124,7 @@ public class MainActivity extends AppCompatActivity {
         w.getSettings().setUserAgentString(userAgent);
         w.getSettings().setJavaScriptEnabled(true);
         w.getSettings().setDomStorageEnabled(true);
+        w.getSettings().setMediaPlaybackRequiresUserGesture(false);
 
         w.setWebViewClient(webClient);
         w.setWebChromeClient(chromeClient);
@@ -117,7 +133,7 @@ public class MainActivity extends AppCompatActivity {
         switchToTab(tabs.size() - 1);
         w.loadUrl(url);
 
-        updateTabsButton();
+        updateTabsIcon();
     }
 
     private void switchToTab(int index) {
@@ -127,7 +143,7 @@ public class MainActivity extends AppCompatActivity {
         webContainer.addView(tabs.get(index));
         currentTab = index;
 
-        updateTabsButton();
+        updateTabsIcon();
     }
 
     private void closeTab(int index) {
@@ -142,52 +158,45 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void updateTabsButton() {
-        tabsBtn.setText("Abas (" + tabs.size() + ")");
+    private void updateTabsIcon() {
+        tabsBtn.setContentDescription("Abas (" + tabs.size() + ")");
     }
 
-    private void showTabsDialog() {
-        LinearLayout list = new LinearLayout(this);
-        list.setOrientation(LinearLayout.VERTICAL);
+    /* ================= TELA DE ABAS (FULLSCREEN) ================= */
+
+    private void showTabsScreen() {
+        Dialog dialog = new Dialog(this, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
+        dialog.setContentView(R.layout.dialog_tabs);
+
+        LinearLayout list = dialog.findViewById(R.id.tabsList);
 
         for (int i = 0; i < tabs.size(); i++) {
             int index = i;
 
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setPadding(24, 24, 24, 24);
+            View row = LayoutInflater.from(this)
+                    .inflate(android.R.layout.simple_list_item_1, list, false);
 
-            TextView title = new TextView(this);
-            title.setLayoutParams(new LinearLayout.LayoutParams(
-                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            TextView title = row.findViewById(android.R.id.text1);
             title.setText(tabs.get(i).getTitle() != null
                     ? tabs.get(i).getTitle()
                     : "Aba " + (i + 1));
 
             title.setOnClickListener(v -> {
                 switchToTab(index);
+                dialog.dismiss();
             });
 
-            TextView close = new TextView(this);
-            close.setText("✕");
-            close.setTextSize(18);
-            close.setPadding(16, 0, 16, 0);
-            close.setOnClickListener(v -> {
+            title.setOnLongClickListener(v -> {
                 closeTab(index);
+                dialog.dismiss();
+                showTabsScreen(); // recria lista
+                return true;
             });
 
-            row.addView(title);
-            row.addView(close);
             list.addView(row);
         }
 
-        new AlertDialog.Builder(this)
-                .setTitle("Abas")
-                .setView(list)
-                .setPositiveButton("+ Nova aba", (d, w) ->
-                        addNewTab(HOME_URL))
-                .setNegativeButton("Fechar", null)
-                .show();
+        dialog.show();
     }
 
     /* ================= WEB ================= */
@@ -195,6 +204,7 @@ public class MainActivity extends AppCompatActivity {
     private final WebViewClient webClient = new WebViewClient() {
         @Override
         public boolean shouldOverrideUrlLoading(WebView v, String url) {
+
             if (isAdult(url)) {
                 new AlertDialog.Builder(MainActivity.this)
                         .setTitle("Conteúdo +18")
@@ -225,9 +235,16 @@ public class MainActivity extends AppCompatActivity {
             webContainer.removeAllViews();
             webContainer.addView(view);
 
+            // Tela cheia REAL
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            );
+
+            root.setVisibility(View.GONE);
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-            urlBar.setVisibility(View.GONE);
-            tabsBtn.setVisibility(View.GONE);
         }
 
         @Override
@@ -239,9 +256,11 @@ public class MainActivity extends AppCompatActivity {
 
             webContainer.addView(tabs.get(currentTab));
 
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+
+            root.setVisibility(View.VISIBLE);
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-            urlBar.setVisibility(View.VISIBLE);
-            tabsBtn.setVisibility(View.VISIBLE);
 
             if (customViewCallback != null) {
                 customViewCallback.onCustomViewHidden();

@@ -4,43 +4,42 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="true"
+    android:padding="8dp">
 
     <!-- Barra superior -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="8dp">
+        android:gravity="center_vertical">
 
-        <!-- Campo URL / Pesquisa -->
+        <!-- Barra de URL -->
         <EditText
             android:id="@+id/urlBar"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_weight="1"
             android:hint="Pesquisar ou digitar endereço"
             android:singleLine="true"
-            android:inputType="textUri" />
+            android:imeOptions="actionGo"
+            android:inputType="textUri"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:background="@drawable/bg_urlbar" />
 
-        <!-- Botão Ir -->
-        <Button
-            android:id="@+id/goBtn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Ir"
-            android:layout_marginStart="4dp" />
-
-        <!-- Botão Abas -->
-        <Button
+        <!-- Botão Abas (ícone) -->
+        <ImageButton
             android:id="@+id/tabsBtn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Abas (1)"
-            android:layout_marginStart="4dp" />
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_agenda"
+            android:contentDescription="Abas" />
     </LinearLayout>
 
-    <!-- Container do WebView -->
+    <!-- WebView -->
     <FrameLayout
         android:id="@+id/webContainer"
         android:layout_width="match_parent"
