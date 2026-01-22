@@ -1,48 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root"
-    android:orientation="vertical"
-    android:fitsSystemWindows="true"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true">
 
-    <!-- BARRA DE ABAS -->
-    <HorizontalScrollView
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:fillViewport="true">
-
-        <LinearLayout
-            android:id="@+id/tabBar"
-            android:orientation="horizontal"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"/>
-    </HorizontalScrollView>
-
-    <!-- BARRA DE URL -->
+    <!-- Barra superior -->
     <LinearLayout
-        android:orientation="horizontal"
-        android:padding="8dp"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp">
 
+        <!-- Campo URL / Pesquisa -->
         <EditText
             android:id="@+id/urlBar"
             android:layout_width="0dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="Digite a URL"
-            android:layout_height="wrap_content"/>
+            android:hint="Pesquisar ou digitar endereço"
+            android:singleLine="true"
+            android:inputType="textUri" />
 
+        <!-- Botão Ir -->
         <Button
             android:id="@+id/goBtn"
-            android:text="Ir"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:text="Ir"
+            android:layout_marginStart="4dp" />
+
+        <!-- Botão Abas -->
+        <Button
+            android:id="@+id/tabsBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Abas (1)"
+            android:layout_marginStart="4dp" />
     </LinearLayout>
 
-    <!-- WEBVIEW -->
+    <!-- Container do WebView -->
     <FrameLayout
         android:id="@+id/webContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="1" />
+
 </LinearLayout>

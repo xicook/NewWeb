@@ -26,10 +26,9 @@ public class MainActivity extends AppCompatActivity {
 
     private EditText urlBar;
     private FrameLayout webContainer;
-    private LinearLayout tabBar;
+    private Button tabsBtn;
 
     private final ArrayList<WebView> tabs = new ArrayList<>();
-    private final ArrayList<View> tabViews = new ArrayList<>();
     private int currentTab = -1;
 
     @Override
@@ -39,16 +38,40 @@ public class MainActivity extends AppCompatActivity {
 
         urlBar = findViewById(R.id.urlBar);
         webContainer = findViewById(R.id.webContainer);
-        tabBar = findViewById(R.id.tabBar);
+        tabsBtn = findViewById(R.id.tabsBtn);
         Button go = findViewById(R.id.goBtn);
 
-        go.setOnClickListener(v -> loadUrl());
+        go.setOnClickListener(v -> loadInput());
+        tabsBtn.setOnClickListener(v -> showTabsDialog());
 
-        // Aba inicial
         addNewTab(HOME_URL);
+    }
 
-        // Botão +
-        addPlusTab();
+    /* ===================== URL / BUSCA ===================== */
+
+    private void loadInput() {
+        if (currentTab < 0) return;
+
+        String input = urlBar.getText().toString();
+        if (TextUtils.isEmpty(input)) return;
+
+        String url = buildUrl(input);
+        tabs.get(currentTab).loadUrl(url);
+    }
+
+    private String buildUrl(String input) {
+        input = input.trim();
+
+        if (input.contains(" ") || !input.contains(".")) {
+            return "https://www.google.com/search?q=" +
+                    input.replace(" ", "+");
+        }
+
+        if (!input.startsWith("http://") && !input.startsWith("https://")) {
+            input = "https://" + input;
+        }
+
+        return input;
     }
 
     /* ===================== ABAS ===================== */
@@ -56,19 +79,16 @@ public class MainActivity extends AppCompatActivity {
     private void addNewTab(String url) {
         WebView w = new WebView(this);
 
-        /* ========= USER-AGENT FINAL ========= */
-
+        /* ===== USER-AGENT ===== */
         String androidVersion = Build.VERSION.RELEASE;
         String device = Build.MODEL;
 
-        // versão MAJOR do WebView / Chrome
         String webViewMajor = "unknown";
         if (Build.VERSION.SDK_INT >= 26) {
             try {
-                String full = WebView
+                webViewMajor = WebView
                         .getCurrentWebViewPackage()
-                        .versionName; // ex: "145.0.6422.76"
-                webViewMajor = full.split("\\.")[0]; // "145"
+                        .versionName.split("\\.")[0];
             } catch (Exception ignored) {}
         }
 
@@ -76,14 +96,13 @@ public class MainActivity extends AppCompatActivity {
                 "Mozilla/5.0 (Android " + androidVersion +
                         "; Mobile; " + device + ") " +
                         "AppleWebKit/537.36 (KHTML, like Gecko) " +
-                        "Chrome/" + webViewMajor + " " +
-                        "on NewWeb/" + APP_VERSION + " " +
-                        "based on WebView " + webViewMajor + " " +
-                        "Safari/537.36";
+                        "Chrome/" + webViewMajor +
+                        " on NewWeb/" + APP_VERSION +
+                        " based on WebView " + webViewMajor +
+                        " Safari/537.36";
 
         w.getSettings().setUserAgentString(userAgent);
-
-        /* =================================== */
+        /* ===================== */
 
         w.getSettings().setJavaScriptEnabled(true);
         w.getSettings().setDomStorageEnabled(true);
@@ -92,33 +111,10 @@ public class MainActivity extends AppCompatActivity {
         w.setWebChromeClient(chromeClient);
 
         tabs.add(w);
-        int index = tabs.size() - 1;
-
-        View tab = LayoutInflater.from(this)
-                .inflate(R.layout.tab_item, tabBar, false);
-
-        TextView title = tab.findViewById(R.id.tabTitle);
-        TextView close = tab.findViewById(R.id.tabClose);
-
-        title.setText("Nova aba");
-
-        tab.setOnClickListener(v -> switchToTab(index));
-        close.setOnClickListener(v -> closeTab(index));
-
-        tabViews.add(tab);
-        tabBar.addView(tab, tabBar.getChildCount() - 1);
-
-        switchToTab(index);
+        switchToTab(tabs.size() - 1);
         w.loadUrl(url);
-    }
 
-    private void addPlusTab() {
-        TextView plus = new TextView(this);
-        plus.setText("+");
-        plus.setTextSize(22);
-        plus.setPadding(32, 8, 32, 8);
-        plus.setOnClickListener(v -> addNewTab(HOME_URL));
-        tabBar.addView(plus);
+        updateTabsButton();
     }
 
     private void switchToTab(int index) {
@@ -127,33 +123,56 @@ public class MainActivity extends AppCompatActivity {
         webContainer.removeAllViews();
         webContainer.addView(tabs.get(index));
         currentTab = index;
+
+        updateTabsButton();
     }
 
     private void closeTab(int index) {
         if (index < 0 || index >= tabs.size()) return;
 
         tabs.remove(index);
-        tabBar.removeView(tabViews.remove(index));
 
         if (tabs.isEmpty()) {
             addNewTab(HOME_URL);
-            return;
+        } else {
+            switchToTab(Math.max(0, index - 1));
+        }
+    }
+
+    private void updateTabsButton() {
+        tabsBtn.setText("Abas (" + tabs.size() + ")");
+    }
+
+    private void showTabsDialog() {
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+
+        for (int i = 0; i < tabs.size(); i++) {
+            int index = i;
+
+            TextView item = new TextView(this);
+            item.setPadding(32, 24, 32, 24);
+            item.setText(tabs.get(i).getTitle() != null
+                    ? tabs.get(i).getTitle()
+                    : "Aba " + (i + 1));
+
+            item.setOnClickListener(v -> {
+                switchToTab(index);
+            });
+
+            list.addView(item);
         }
 
-        switchToTab(Math.max(0, index - 1));
+        new AlertDialog.Builder(this)
+                .setTitle("Abas")
+                .setView(list)
+                .setPositiveButton("+ Nova aba", (d, w) ->
+                        addNewTab(HOME_URL))
+                .setNegativeButton("Fechar", null)
+                .show();
     }
 
     /* ===================== WEB ===================== */
-
-    private void loadUrl() {
-        if (currentTab < 0) return;
-
-        String url = urlBar.getText().toString().trim();
-        if (TextUtils.isEmpty(url)) return;
-        if (!url.startsWith("http")) url = "https://" + url;
-
-        tabs.get(currentTab).loadUrl(url);
-    }
 
     private final WebViewClient webClient = new WebViewClient() {
         @Override
@@ -177,11 +196,7 @@ public class MainActivity extends AppCompatActivity {
     private final WebChromeClient chromeClient = new WebChromeClient() {
         @Override
         public void onReceivedTitle(WebView v, String title) {
-            int i = tabs.indexOf(v);
-            if (i >= 0) {
-                TextView t = tabViews.get(i).findViewById(R.id.tabTitle);
-                t.setText(title);
-            }
+            updateTabsButton();
         }
     };
 
