@@ -7,9 +7,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Rational;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.webkit.WebChromeClient;
@@ -53,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
         tabsBtn = findViewById(R.id.tabsBtn);
         webContainer = findViewById(R.id.webContainer);
 
-        // Enter navega / pesquisa
+        // Enter abre site ou pesquisa
         urlBar.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_GO
                     || actionId == EditorInfo.IME_ACTION_DONE
@@ -69,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
         addNewTab(HOME_URL);
     }
 
-    /* ================= URL / BUSCA ================= */
+    /* ================= URL / PESQUISA ================= */
 
     private void loadInput() {
         if (currentTab < 0) return;
@@ -103,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
         String androidVersion = Build.VERSION.RELEASE;
         String device = Build.MODEL;
 
-        String webViewMajor = "unknown";
+        String webViewMajor = "0";
         if (Build.VERSION.SDK_INT >= 26) {
             try {
                 webViewMajor = WebView
@@ -140,9 +138,13 @@ public class MainActivity extends AppCompatActivity {
         if (index < 0 || index >= tabs.size()) return;
 
         webContainer.removeAllViews();
-        webContainer.addView(tabs.get(index));
-        currentTab = index;
+        webContainer.addView(tabs.get(index),
+                new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT
+                ));
 
+        currentTab = index;
         updateTabsIcon();
     }
 
@@ -165,34 +167,59 @@ public class MainActivity extends AppCompatActivity {
     /* ================= TELA DE ABAS (FULLSCREEN) ================= */
 
     private void showTabsScreen() {
-        Dialog dialog = new Dialog(this, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
+        Dialog dialog = new Dialog(
+                this,
+                android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen
+        );
         dialog.setContentView(R.layout.dialog_tabs);
 
         LinearLayout list = dialog.findViewById(R.id.tabsList);
+        TextView newTabBtn = dialog.findViewById(R.id.newTabBtn);
+
+        newTabBtn.setOnClickListener(v -> {
+            addNewTab(HOME_URL);
+            dialog.dismiss();
+        });
 
         for (int i = 0; i < tabs.size(); i++) {
             int index = i;
 
-            View row = LayoutInflater.from(this)
-                    .inflate(android.R.layout.simple_list_item_1, list, false);
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(24, 24, 24, 24);
 
-            TextView title = row.findViewById(android.R.id.text1);
-            title.setText(tabs.get(i).getTitle() != null
-                    ? tabs.get(i).getTitle()
-                    : "Aba " + (i + 1));
+            TextView title = new TextView(this);
+            title.setText(
+                    tabs.get(i).getTitle() != null
+                            ? tabs.get(i).getTitle()
+                            : "Aba " + (i + 1)
+            );
+            title.setLayoutParams(
+                    new LinearLayout.LayoutParams(
+                            0,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            1
+                    )
+            );
+
+            TextView close = new TextView(this);
+            close.setText("✕");
+            close.setTextSize(18f);
+            close.setPadding(24, 0, 24, 0);
 
             title.setOnClickListener(v -> {
                 switchToTab(index);
                 dialog.dismiss();
             });
 
-            title.setOnLongClickListener(v -> {
+            close.setOnClickListener(v -> {
                 closeTab(index);
                 dialog.dismiss();
-                showTabsScreen(); // recria lista
-                return true;
+                showTabsScreen(); // atualiza na hora
             });
 
+            row.addView(title);
+            row.addView(close);
             list.addView(row);
         }
 
@@ -233,13 +260,17 @@ public class MainActivity extends AppCompatActivity {
             customViewCallback = callback;
 
             webContainer.removeAllViews();
-            webContainer.addView(view);
+            webContainer.addView(
+                    view,
+                    new FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.MATCH_PARENT,
+                            FrameLayout.LayoutParams.MATCH_PARENT
+                    )
+            );
 
-            // Tela cheia REAL
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
             getWindow().getDecorView().setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+                    View.SYSTEM_UI_FLAG_FULLSCREEN
                             | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
             );
 
@@ -254,7 +285,13 @@ public class MainActivity extends AppCompatActivity {
             webContainer.removeView(customView);
             customView = null;
 
-            webContainer.addView(tabs.get(currentTab));
+            webContainer.addView(
+                    tabs.get(currentTab),
+                    new FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.MATCH_PARENT,
+                            FrameLayout.LayoutParams.MATCH_PARENT
+                    )
+            );
 
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
             getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
