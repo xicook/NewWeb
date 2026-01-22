@@ -53,7 +53,7 @@ public class MainActivity extends Activity {
         tabsOverlay = findViewById(R.id.tabsOverlay);
         urlBar = findViewById(R.id.urlBar);
 
-        hideSystemUI();
+        onShowCustomView();
         createNewTab(HOME_URL);
 
         urlBar.setOnKeyListener((v, keyCode, event) -> {
@@ -126,7 +126,6 @@ public class MainActivity extends Activity {
                 webContainer.addView(view);
 
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-                hideSystemUI();
                 urlBar.setVisibility(View.GONE);
             }
 
@@ -144,7 +143,6 @@ public class MainActivity extends Activity {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
                 urlBar.setVisibility(View.VISIBLE);
                 switchToTab(currentTab);
-                hideSystemUI();
             }
         });
     }
@@ -218,7 +216,7 @@ public class MainActivity extends Activity {
         return "Mozilla/5.0 (Android " + androidVer + "; Mobile; " + device + ") " +
                 "AppleWebKit/537.36 (KHTML, like Gecko) " +
                 "Chrome/" + webViewVer +
-                " on NewWeb/1.3 based on WebView " + webViewVer +
+                " on NewWeb/1.4 based on WebView " + webViewVer +
                 " Safari/537.36";
     }
 
@@ -226,7 +224,8 @@ public class MainActivity extends Activity {
        FULLSCREEN
        ========================= */
 
-    private void hideSystemUI() {
+    private void onShowCustomView()
+    {
         if (Build.VERSION.SDK_INT >= 30) {
             WindowInsetsController c = getWindow().getInsetsController();
             if (c != null) {
