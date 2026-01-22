@@ -21,6 +21,7 @@ import java.util.ArrayList;
 public class MainActivity extends AppCompatActivity {
 
     private static final String HOME_URL = "https://www.google.com";
+    private static final String APP_VERSION = "1.1";
 
     private EditText urlBar;
     private FrameLayout webContainer;
@@ -31,8 +32,8 @@ public class MainActivity extends AppCompatActivity {
     private int currentTab = -1;
 
     @Override
-    protected void onCreate(Bundle b) {
-        super.onCreate(b);
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         urlBar = findViewById(R.id.urlBar);
@@ -49,10 +50,18 @@ public class MainActivity extends AppCompatActivity {
         addPlusTab();
     }
 
-    /* ================= ABAS ================= */
+    /* ===================== ABAS ===================== */
 
     private void addNewTab(String url) {
         WebView w = new WebView(this);
+
+        // ✅ ANDROID VERSION REAL (ex: 13, 14, 15, 16)
+        String androidVersion = android.os.Build.VERSION.RELEASE;
+
+        String userAgent =
+                "Mozilla/5.0 NewWeb " + APP_VERSION + " on Android " + androidVersion;
+
+        w.getSettings().setUserAgentString(userAgent);
         w.getSettings().setJavaScriptEnabled(true);
         w.getSettings().setDomStorageEnabled(true);
 
@@ -111,7 +120,7 @@ public class MainActivity extends AppCompatActivity {
         switchToTab(Math.max(0, index - 1));
     }
 
-    /* ================= WEB ================= */
+    /* ===================== WEB ===================== */
 
     private void loadUrl() {
         if (currentTab < 0) return;

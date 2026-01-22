@@ -6,6 +6,7 @@
     <application
         android:label="NewWeb"
         android:icon="@drawable/appicon"
+        android:roundIcon="@drawable/appicon"
         android:theme="@style/Theme.NewWeb">
 
         <activity
